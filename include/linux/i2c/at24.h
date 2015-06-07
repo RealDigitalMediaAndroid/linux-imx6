@@ -52,4 +52,6 @@ struct at24_platform_data {
 	void		*context;
 };
 
+int android_bootloader_set_bit(u8 val);
+
 #endif /* _LINUX_AT24_H */

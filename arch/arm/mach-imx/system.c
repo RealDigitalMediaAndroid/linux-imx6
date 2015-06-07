@@ -23,6 +23,7 @@
 #include <linux/delay.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/i2c/at24.h>
 
 #include <asm/system_misc.h>
 #include <asm/proc-fns.h>
@@ -65,6 +66,9 @@ void do_switch_recovery(void)
 	__raw_writel(reg, (addr + SNVS_LPGPR));
 
 	iounmap(addr);
+
+        if (!android_bootloader_set_bit(ANDROID_RECOVERY_BOOT))
+		pr_warn("Failed to set android recovery bit!\n");
 }
 
 void do_switch_fastboot(void)
@@ -83,6 +87,9 @@ void do_switch_fastboot(void)
 	__raw_writel(reg, addr + SNVS_LPGPR);
 
 	iounmap(addr);
+
+        if (!android_bootloader_set_bit(ANDROID_FASTBOOT_BOOT))
+		pr_warn("Failed to set android fastboot bit!\n");
 }
 #endif
 static void arch_reset_special_mode(char mode, const char *cmd)

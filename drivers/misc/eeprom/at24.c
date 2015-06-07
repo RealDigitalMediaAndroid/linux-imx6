@@ -23,6 +23,7 @@
 #include <linux/of.h>
 #include <linux/i2c.h>
 #include <linux/i2c/at24.h>
+#include <linux/of_device.h>
 
 /*
  * I2C EEPROMs from most vendors are inexpensive and mostly interchangeable.
@@ -431,6 +432,55 @@ static ssize_t at24_bin_write(struct file *filp, struct kobject *kobj,
 	at24 = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	return at24_write(at24, buf, off, count);
 }
+
+/*-------------------------------------------------------------------------*/
+
+#ifdef CONFIG_MXC_REBOOT_ANDROID_CMD
+
+/*
+   We'll store the android bits in the Secure Key area since it's
+   NVRAM. We'll use the last byte.
+
+   I'm sure that there's a better way to do this.
+*/
+#define SECURE_KEY_ANDROID_OFFSET	0xDF
+#define SECURE_KEY_OF_PATH	"/soc/aips-bus@02100000/i2c@021a0000/eeprom@51"
+
+static int of_dev_node_match(struct device *dev, void *data)
+{
+	return dev->of_node == data;
+}
+
+int android_bootloader_set_bit(u8 val)
+{
+	struct device_node *np;
+	struct device *dev;
+	u8 rval;
+	int ret = 1;
+
+	np = of_find_node_by_path(SECURE_KEY_OF_PATH);
+	if (np == NULL) return 1;
+
+	dev = bus_find_device(&i2c_bus_type, NULL, np, of_dev_node_match);
+	if (dev == NULL) return 1;
+
+	if (1 != at24_bin_read(NULL, &dev->kobj, NULL, &rval,
+			       SECURE_KEY_ANDROID_OFFSET, 1))
+		goto secure_key_device_cleanup;
+
+	rval |= val;
+	if (1 != at24_bin_write(NULL, &dev->kobj, NULL, &rval,
+				SECURE_KEY_ANDROID_OFFSET, 1))
+		goto secure_key_device_cleanup;
+
+	ret = 0;
+secure_key_device_cleanup:
+	put_device(dev);
+	return ret;
+}
+EXPORT_SYMBOL(android_bootloader_set_bit);
+
+#endif /* CONFIG_MXC_REBOOT_ANDROID_CMD */
 
 /*-------------------------------------------------------------------------*/
 
