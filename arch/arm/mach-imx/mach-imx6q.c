@@ -41,6 +41,7 @@
 #include <asm/system_misc.h>
 #include <linux/memblock.h>
 #include <asm/setup.h>
+#include <linux/mfd/gsc.h>
 
 #include "common.h"
 #include "cpuidle.h"
@@ -387,6 +388,22 @@ static const struct of_dev_auxdata imx6q_auxdata_lookup[] __initconst = {
 	{ /* sentinel */ }
 };
 
+extern void do_sync_work(struct work_struct *work);
+extern void do_emergency_remount(struct work_struct *work);
+
+static void imx6q_power_off(void)
+{
+	struct work_struct *work;
+	work = kmalloc(sizeof(*work), GFP_ATOMIC);
+        if (work)
+		do_sync_work(work);
+	work = kmalloc(sizeof(*work), GFP_ATOMIC);
+        if (work)
+		do_emergency_remount(work);
+        gsc_powerdown(2);
+        pr_err("gsc_powerdown() failed\n");
+}
+
 static void __init imx6q_init_machine(void)
 {
 	struct device *parent;
@@ -404,6 +421,8 @@ static void __init imx6q_init_machine(void)
 	imx6_pm_init();
 	imx6q_csi_mux_init();
 	imx6q_mini_pcie_init();
+
+        pm_power_off_prepare = imx6q_power_off;
 }
 
 #define OCOTP_CFG3			0x440

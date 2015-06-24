@@ -114,7 +114,7 @@ SYSCALL_DEFINE0(sync)
 	return 0;
 }
 
-static void do_sync_work(struct work_struct *work)
+void do_sync_work(struct work_struct *work)
 {
 	int nowait = 0;
 
