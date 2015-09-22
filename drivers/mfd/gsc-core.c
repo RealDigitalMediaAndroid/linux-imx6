@@ -103,7 +103,7 @@ static int __gsc_i2c_read(u8 reg, u8 *val)
 		 * -EIO returned when i2c device is busy
 		 */
 		if (ret != -EAGAIN && ret != -EIO)
-			continue;
+			break;
 	}
 	if (ret < 0) {
 		dev_err(&gsc_priv->client->dev, "<< 0x%02x %d\n", reg, ret);
@@ -345,6 +345,21 @@ static struct attribute_group attr_group = {
 	.attrs = gsc_attrs,
 };
 
+static void gsc_poweroff(void)
+{
+	dev_info(&gsc_priv->client->dev, "GSC powerdown"
+		 " - press pushbutton to wake\n");
+	mutex_lock(&gsc_priv->io_lock);
+	__gsc_i2c_write(GSC_TIME + 0, 0xff);
+	__gsc_i2c_write(GSC_TIME + 1, 0xff);
+	__gsc_i2c_write(GSC_TIME + 2, 0xff);
+	__gsc_i2c_write(GSC_TIME + 3, 0xff);
+	__gsc_i2c_update(GSC_CTRL_1, 0, 1 << GSC_CTRL_1_ACTIVATE_SLEEP |
+			 1 << GSC_CTRL_1_SLEEP_ENABLE);
+	/* board should be powered down at this point */
+	mutex_unlock(&gsc_priv->io_lock);
+}
+
 static int
 gsc_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
@@ -403,6 +418,13 @@ gsc_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		ret = of_platform_populate(client->dev.of_node, NULL, NULL,
 					   &client->dev);
 	}
+
+	/*
+	 * if no specific power off function in board file, power off system by
+	 * GSC
+	 */
+	if (!pm_power_off)
+		pm_power_off = gsc_poweroff;
 
 	return ret;
 }

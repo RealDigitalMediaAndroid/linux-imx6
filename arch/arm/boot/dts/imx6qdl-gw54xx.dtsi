@@ -247,12 +247,6 @@
 	status = "okay";
 };
 
-&cpu0 {
-	arm-supply = <&reg_vdd_arm>;
-	soc-supply = <&reg_vdd_soc>;
-	pu-supply = <&pu_dummy>; /* ldo-bypass */
-};
-
 &flexcan1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan1_1>;
@@ -273,18 +267,13 @@
 	fsl,cpu_pupscr_sw = <0xf>;
 	fsl,cpu_pdnscr_iso2sw = <0x1>;
 	fsl,cpu_pdnscr_iso = <0x1>;
-	fsl,ldo-bypass = <1>;
-	pu-supply = <&pu_dummy>; /* ldo-bypass */
+	fsl,ldo-bypass = <0>;
 };
 
 &gpmi {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_gpmi_nand_2>;
+	pinctrl-0 = <&pinctrl_gpmi_nand>;
 	status = "okay";
-};
-
-&gpu {
-	pu-supply = <&pu_dummy>; /* ldo-bypass */
 };
 
 &hdmi_audio {
@@ -406,24 +395,29 @@
 		regulators {
 			/* VDD_ARM */
 			reg_vdd_arm: sw1ab {
+				regulator-name = "vddarm";
 				regulator-min-microvolt = <300000>;
 				regulator-max-microvolt = <1875000>;
 				regulator-boot-on;
 				regulator-always-on;
 				regulator-ramp-delay = <6250>;
+				linux,phandle = <&reg_vdd_arm>;
 			};
 
 			/* VDD_SOC */
 			reg_vdd_soc: sw1c {
+				regulator-name = "vddsoc";
 				regulator-min-microvolt = <300000>;
 				regulator-max-microvolt = <1875000>;
 				regulator-boot-on;
 				regulator-always-on;
 				regulator-ramp-delay = <6250>;
+				linux,phandle = <&reg_vdd_soc>;
 			};
 
 			/* VDD_HIGH */
 			reg_3p0v: sw2 {
+				regulator-name = "vdd3p0";
 				regulator-min-microvolt = <800000>;
 				regulator-max-microvolt = <3950000>;
 				regulator-boot-on;
@@ -432,6 +426,7 @@
 
 			/* VDD_DDR */
 			reg_ddra: sw3a {
+				regulator-name = "vddddra";
 				regulator-min-microvolt = <400000>;
 				regulator-max-microvolt = <1975000>;
 				regulator-boot-on;
@@ -440,6 +435,7 @@
 
 			/* VDD_DDR */
 			reg_ddrb: sw3b {
+				regulator-name = "vddddrb";
 				regulator-min-microvolt = <400000>;
 				regulator-max-microvolt = <1975000>;
 				regulator-boot-on;
@@ -448,17 +444,20 @@
 
 			/* VDD_1P8 */
 			reg_1p8v: sw4 {
+				regulator-name = "vdd1p8";
 				regulator-min-microvolt = <800000>;
 				regulator-max-microvolt = <3300000>;
 			};
 
 			/* VDD_5P0 */
 			reg_swbst: swbst {
+				regulator-name = "vdd5p0";
 				regulator-min-microvolt = <5000000>;
 				regulator-max-microvolt = <5150000>;
 			};
 
 			reg_snvs: vsnvs {
+				regulator-name = "vddsnvs";
 				regulator-min-microvolt = <1000000>;
 				regulator-max-microvolt = <3000000>;
 				regulator-boot-on;
@@ -467,12 +466,14 @@
 
 			/* VDD_VREF */
 			reg_vref: vrefddr {
+				regulator-name = "vddvref";
 				regulator-boot-on;
 				regulator-always-on;
 			};
 
 			/* VDD_PCI_1P5_1 */
 			reg_1p5va: vgen1 {
+				regulator-name = "vdd1p5a";
 				regulator-min-microvolt = <800000>;
 				regulator-max-microvolt = <1550000>;
 				regulator-boot-on;
@@ -481,6 +482,7 @@
 
 			/* VDD_PCI_1P5_2 */
 			reg_1p5vb: vgen2 {
+				regulator-name = "vdd1p5b";
 				regulator-min-microvolt = <800000>;
 				regulator-max-microvolt = <1550000>;
 				regulator-boot-on;
@@ -495,6 +497,7 @@
 
 			/* VDD_AUD_1P8 */
 			reg_aud_1p8v: vgen4 {
+				regulator-name = "vdd1p8a";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <3300000>;
 				regulator-always-on;
@@ -502,6 +505,7 @@
 
 			/* VDD_2P5 */
 			reg_2p5v: vgen5 {
+				regulator-name = "vdd2p5";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <3300000>;
 				regulator-always-on;
@@ -637,7 +641,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hog>;
 
-	hog {
+	imx6qdl-gw54xx {
 		pinctrl_hog: hoggrp {
 			fsl,pins = <
 				MX6QDL_PAD_DISP0_DAT23__GPIO5_IO17	0x4001b0b0 /* PCIESKT_WDIS# */			
@@ -662,10 +666,68 @@
 				MX6QDL_PAD_KEY_ROW4__GPIO4_IO15		0x0001b0b0 /* user3 led */
 				MX6QDL_PAD_SD1_DAT0__GPIO1_IO16		0x0001b0b0 /* USBHUB_RST# */
 				MX6QDL_PAD_SD2_CLK__GPIO1_IO10		0x0001b0b0 /* LVDS_GPIO */
-				MX6QDL_PAD_SD3_DAT5__GPIO7_IO00		0x0001b0b0 /* SD3_CD# */
 				MX6QDL_PAD_SD4_DAT0__GPIO2_IO08		0x4001b0b0 /* MSATA_EN */
 				MX6QDL_PAD_SD4_DAT3__GPIO2_IO11		0x4001b0b0 /* UART2_EN# */
 			 >;
+		};
+
+		pinctrl_gpmi_nand: gpminandgrp {
+			fsl,pins = <
+				MX6QDL_PAD_NANDF_CLE__NAND_CLE		0xb0b1
+				MX6QDL_PAD_NANDF_ALE__NAND_ALE		0xb0b1
+				MX6QDL_PAD_NANDF_WP_B__NAND_WP_B	0xb0b1
+				MX6QDL_PAD_NANDF_RB0__NAND_READY_B	0xb000
+				MX6QDL_PAD_NANDF_CS0__NAND_CE0_B	0xb0b1
+				MX6QDL_PAD_SD4_CMD__NAND_RE_B		0xb0b1
+				MX6QDL_PAD_SD4_CLK__NAND_WE_B		0xb0b1
+				MX6QDL_PAD_NANDF_D0__NAND_DATA00	0xb0b1
+				MX6QDL_PAD_NANDF_D1__NAND_DATA01	0xb0b1
+				MX6QDL_PAD_NANDF_D2__NAND_DATA02	0xb0b1
+				MX6QDL_PAD_NANDF_D3__NAND_DATA03	0xb0b1
+				MX6QDL_PAD_NANDF_D4__NAND_DATA04	0xb0b1
+				MX6QDL_PAD_NANDF_D5__NAND_DATA05	0xb0b1
+				MX6QDL_PAD_NANDF_D6__NAND_DATA06	0xb0b1
+				MX6QDL_PAD_NANDF_D7__NAND_DATA07	0xb0b1
+			>;
+		};
+
+		pinctrl_usdhc3: usdhc3grp {
+			fsl,pins = <
+				MX6QDL_PAD_SD3_CMD__SD3_CMD		0x17059
+				MX6QDL_PAD_SD3_CLK__SD3_CLK		0x10059
+				MX6QDL_PAD_SD3_DAT0__SD3_DATA0		0x17059
+				MX6QDL_PAD_SD3_DAT1__SD3_DATA1		0x17059
+				MX6QDL_PAD_SD3_DAT2__SD3_DATA2		0x17059
+				MX6QDL_PAD_SD3_DAT3__SD3_DATA3		0x17059
+				MX6QDL_PAD_NANDF_CS1__SD3_VSELECT	0x17059
+				MX6QDL_PAD_SD3_DAT5__GPIO7_IO00		0x17059 /* CD */
+			>;
+		};
+
+		pinctrl_usdhc3_100mhz: usdhc3grp100mhz {
+			fsl,pins = <
+				MX6QDL_PAD_SD3_CMD__SD3_CMD		0x170b9
+				MX6QDL_PAD_SD3_CLK__SD3_CLK		0x100b9
+				MX6QDL_PAD_SD3_DAT0__SD3_DATA0		0x170b9
+				MX6QDL_PAD_SD3_DAT1__SD3_DATA1		0x170b9
+				MX6QDL_PAD_SD3_DAT2__SD3_DATA2		0x170b9
+				MX6QDL_PAD_SD3_DAT3__SD3_DATA3		0x170b9
+				MX6QDL_PAD_NANDF_CS1__SD3_VSELECT	0x170b9
+				MX6QDL_PAD_SD3_DAT5__GPIO7_IO00		0x170b9 /* CD */
+			>;
+		};
+
+		pinctrl_usdhc3_200mhz: usdhc3grp200mhz {
+			fsl,pins = <
+				MX6QDL_PAD_SD3_CMD__SD3_CMD		0x170f9
+				MX6QDL_PAD_SD3_CLK__SD3_CLK		0x100f9
+				MX6QDL_PAD_SD3_DAT0__SD3_DATA0		0x170f9
+				MX6QDL_PAD_SD3_DAT1__SD3_DATA1		0x170f9
+				MX6QDL_PAD_SD3_DAT2__SD3_DATA2		0x170f9
+				MX6QDL_PAD_SD3_DAT3__SD3_DATA3		0x170f9
+				MX6QDL_PAD_NANDF_CS1__SD3_VSELECT	0x170f9
+				MX6QDL_PAD_SD3_DAT5__GPIO7_IO00		0x170f9 /* CD */
+			>;
 		};
 	};
 };
@@ -803,13 +865,12 @@
 };
 
 &usdhc3 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_usdhc3_2>;
+	pinctrl-names = "default", "state_100mhz", "state_200mhz";
+	pinctrl-0 = <&pinctrl_usdhc3>;
+	pinctrl-1 = <&pinctrl_usdhc3_100mhz>;
+	pinctrl-2 = <&pinctrl_usdhc3_200mhz>;
 	cd-gpios = <&gpio7 0 GPIO_ACTIVE_HIGH>;
 	vmmc-supply = <&reg_3p3v>;
+	no-1-8-v; /* firmware will remove if board revision supports */
 	status = "okay";
-};
-
-&vpu {
-	pu-supply = <&pu_dummy>; /* ldo-bypass */
 };

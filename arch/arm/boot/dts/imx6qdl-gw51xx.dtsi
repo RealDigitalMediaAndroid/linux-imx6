@@ -114,12 +114,6 @@
 	};
 };
 
-&cpu0 {
-	arm-supply = <&reg_vdd_arm>;
-	soc-supply = <&reg_vdd_soc>;
-	pu-supply = <&pu_dummy>; /* ldo-bypass */
-};
-
 &fec {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_enet_1>;
@@ -133,18 +127,13 @@
 	fsl,cpu_pupscr_sw = <0xf>;
 	fsl,cpu_pdnscr_iso2sw = <0x1>;
 	fsl,cpu_pdnscr_iso = <0x1>;
-	fsl,ldo-bypass = <1>;
-	pu-supply = <&pu_dummy>; /* ldo-bypass */
+	fsl,ldo-bypass = <0>;
 };
 
 &gpmi {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_gpmi_nand_2>;
 	status = "okay";
-};
-
-&gpu {
-	pu-supply = <&pu_dummy>; /* ldo-bypass */
 };
 
 &hdmi_audio {
@@ -258,16 +247,19 @@
 		regulators {
 			/* VDD_SOC (1+R1/R2 = 1.635) */
 			reg_vdd_soc: sw1 {
+				regulator-name = "vddsoc";
 				regulator-min-microvolt = <674400>;
 				regulator-max-microvolt = <1308000>;
 				lltc,fb-voltage-divider = <127000 200000>;
 				regulator-ramp-delay = <7000>;
 				regulator-boot-on;
 				regulator-always-on;
+				linux,phandle = <&reg_vdd_soc>;
 			};
 
 			/* VDD_1P8 (1+R1/R2 = 2.505): GPS/VideoIn/ENET-PHY */
 			reg_1p8v: sw2 {
+				regulator-name = "vdd1p8";
 				regulator-min-microvolt = <1033310>;
 				regulator-max-microvolt = <2004000>;
 				lltc,fb-voltage-divider = <301000 200000>;
@@ -278,16 +270,19 @@
 
 			/* VDD_ARM (1+R1/R2 = 1.635) */
 			reg_vdd_arm: sw3 {
+				regulator-name = "vddarm";
 				regulator-min-microvolt = <674400>;
 				regulator-max-microvolt = <1308000>;
 				lltc,fb-voltage-divider = <127000 200000>;
 				regulator-ramp-delay = <7000>;
 				regulator-boot-on;
 				regulator-always-on;
+				linux,phandle = <&reg_vdd_arm>;
 			};
 
 			/* VDD_DDR (1+R1/R2 = 2.105) */
 			reg_vdd_ddr: sw4 {
+				regulator-name = "vddddr";
 				regulator-min-microvolt = <868310>;
 				regulator-max-microvolt = <1684000>;
 				lltc,fb-voltage-divider = <221000 200000>;
@@ -298,6 +293,7 @@
 
 			/* VDD_2P5 (1+R1/R2 = 3.435): PCIe/ENET-PHY */
 			reg_2p5v: ldo2 {
+				regulator-name = "vdd2p5";
 				regulator-min-microvolt = <2490375>;
 				regulator-max-microvolt = <2490375>;
 				lltc,fb-voltage-divider = <487000 200000>;
@@ -307,6 +303,7 @@
 
 			/* VDD_HIGH (1+R1/R2 = 4.17) */
 			reg_3p0v: ldo4 {
+				regulator-name = "vdd3p0";
 				regulator-min-microvolt = <3023250>;
 				regulator-max-microvolt = <3023250>;
 				lltc,fb-voltage-divider = <634000 200000>;
@@ -437,8 +434,4 @@
 
 &usbh1 {
 	status = "okay";
-};
-
-&vpu {
-	pu-supply = <&pu_dummy>; /* ldo-bypass */
 };

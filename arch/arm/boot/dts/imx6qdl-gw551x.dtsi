@@ -136,12 +136,6 @@
 	status = "okay";
 };
 
-&cpu0 {
-	arm-supply = <&reg_vdd_arm>;
-	soc-supply = <&reg_vdd_soc>;
-	pu-supply = <&pu_dummy>; /* ldo-bypass */
-};
-
 &flexcan1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan1>;
@@ -155,18 +149,13 @@
 	fsl,cpu_pupscr_sw = <0xf>;
 	fsl,cpu_pdnscr_iso2sw = <0x1>;
 	fsl,cpu_pdnscr_iso = <0x1>;
-	fsl,ldo-bypass = <1>;
-	pu-supply = <&pu_dummy>; /* ldo-bypass */
+	fsl,ldo-bypass = <0>;
 };
 
 &gpmi {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_gpmi_nand>;
 	status = "okay";
-};
-
-&gpu {
-	pu-supply = <&pu_dummy>; /* ldo-bypass */
 };
 
 &hdmi_audio {
@@ -280,16 +269,19 @@
 		regulators {
 			/* VDD_SOC (1+R1/R2 = 1.635) */
 			reg_vdd_soc: sw1 {
+				regulator-name = "vddsoc";
 				regulator-min-microvolt = <674400>;
 				regulator-max-microvolt = <1308000>;
 				lltc,fb-voltage-divider = <127000 200000>;
 				regulator-ramp-delay = <7000>;
 				regulator-boot-on;
 				regulator-always-on;
+				linux,phandle = <&reg_vdd_soc>;
 			};
 
 			/* VDD_DDR (1+R1/R2 = 2.105) */
 			reg_vdd_ddr: sw2 {
+				regulator-name = "vddddr";
 				regulator-min-microvolt = <868310>;
 				regulator-max-microvolt = <1684000>;
 				lltc,fb-voltage-divider = <221000 200000>;
@@ -300,16 +292,19 @@
 
 			/* VDD_ARM (1+R1/R2 = 1.635) */
 			reg_vdd_arm: sw3 {
+				regulator-name = "vddarm";
 				regulator-min-microvolt = <674400>;
 				regulator-max-microvolt = <1308000>;
 				lltc,fb-voltage-divider = <127000 200000>;
 				regulator-ramp-delay = <7000>;
 				regulator-boot-on;
 				regulator-always-on;
+				linux,phandle = <&reg_vdd_arm>;
 			};
 
 			/* VDD_3P3 (1+R1/R2 = 1.281) */
 			reg_3p3: sw4 {
+				regulator-name = "vdd3p3";
 				regulator-min-microvolt = <1880000>;
 				regulator-max-microvolt = <3647000>;
 				lltc,fb-voltage-divider = <200000 56200>;
@@ -320,6 +315,7 @@
 
 			/* VDD_1P8a (1+R1/R2 = 2.505): HDMI In core */
 			reg_1p8a: ldo2 {
+				regulator-name = "vdd1p8a";
 				regulator-min-microvolt = <1816125>;
 				regulator-max-microvolt = <1816125>;
 				lltc,fb-voltage-divider = <301000 200000>;
@@ -329,6 +325,7 @@
 
 			/* VDD_1P8b: HDMI In analog */
 			reg_1p8b: ldo3 {
+				regulator-name = "vdd1p8b";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <1800000>;
 				regulator-boot-on;
@@ -336,6 +333,7 @@
 
 			/* VDD_HIGH (1+R1/R2 = 4.17) */
 			reg_3p0: ldo4 {
+				regulator-name = "vdd3p0";
 				regulator-min-microvolt = <3023250>;
 				regulator-max-microvolt = <3023250>;
 				lltc,fb-voltage-divider = <634000 200000>;
@@ -549,9 +547,3 @@
 &usbh1 {
 	status = "okay";
 };
-
-&vpu {
-	pu-supply = <&pu_dummy>; /* ldo-bypass */
-};
-
-
