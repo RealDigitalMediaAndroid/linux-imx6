@@ -2373,8 +2373,17 @@ static int mxcfb_option_setup(struct platform_device *pdev, struct fb_info *fbi)
 			fb_mode_str = opt;
 	}
 
-	if (fb_mode_str)
-		pdata->mode_str = fb_mode_str;
+	if (fb_mode_str) {
+		/* make a copy because it gets messed up
+		   after a cable disconnect */
+		unsigned int len = strlen(fb_mode_str);
+		pdata->mode_str = kmalloc(len + 1, GFP_KERNEL);
+		if (!pdata->mode_str)
+			return -ENOMEM;
+
+		memcpy(pdata->mode_str, fb_mode_str, len);
+		pdata->mode_str[len] = '\0';
+        }
 
 	if(fb_pix_fmt == 0)
 		fb_pix_fmt = bpp_to_pixfmt(pdata->default_bpp);

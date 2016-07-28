@@ -1805,6 +1805,117 @@ static void mxc_hdmi_notify_fb(struct mxc_hdmi *hdmi)
 	dev_dbg(&hdmi->pdev->dev, "%s exit\n", __func__);
 }
 
+static int mxc_hdmi_set_default_mode(struct mxc_hdmi *hdmi, u8 use_monspecs)
+{
+	int find_result;
+	struct fb_videomode m;
+	const struct fb_videomode *mode;
+        enum fb_find_results {
+		NO_MATCH = 0,
+		EXACT_MATCH,		/* resolution and refresh rate */
+		MATCH_NO_REFRESH,	/* resolution, but refresh ignored or unset */
+		DEFAULT_MODE,		/* default mode or first mode in database */
+		ANY_VALID_MODE,	/* first valid mode (first mode because fb_try_mode() never fails) */
+		BEST_FIT		/* closest resolution match, bigger preferred, refresh ignored */
+	};
+
+	if (!use_monspecs) {
+		/* for initializing without a display */
+		int i;
+		int mode_db_len;
+		int mode_missing = 1;
+
+		/* Do our best to find a mode that matches our desired
+		   resolution, if one was given. */
+
+		/* add 'M' to the mode, if needed, to include CVT modes */
+		char *mode_str = hdmi->dft_mode_str;
+		if (mode_str && !strchr(mode_str, 'M')) {
+			unsigned int len = strlen(mode_str);
+			char *newmode = kmalloc(len + 1, GFP_KERNEL);
+			if (newmode) {
+				memcpy(newmode, mode_str, len);
+				newmode[len] = 'M';
+				newmode[len + 1] = '\0';
+				mode_str = newmode;
+			}
+		}
+
+		/* try the CEA modes first, since they're the most common for hdmi */
+		mode_db_len = sizeof(mxc_cea_mode)/sizeof(struct fb_videomode);
+		find_result = fb_find_mode(&hdmi->fbi->var,
+					   hdmi->fbi, mode_str,
+					   mxc_cea_mode, mode_db_len,
+					   NULL, hdmi->default_bpp);
+		if (find_result != EXACT_MATCH && find_result != MATCH_NO_REFRESH) {
+			/* exact resolution not found */
+			/* try the default X11-based modes */
+			find_result = fb_find_mode(&hdmi->fbi->var,
+						   hdmi->fbi, mode_str,
+						   NULL, 0,
+						   NULL, hdmi->default_bpp);
+		}
+
+		if (find_result == NO_MATCH) {
+			/* Nothing found, but we have to return something */
+			unsigned int index_1080p = 16;
+			fb_videomode_to_var(&hdmi->fbi->var, &mxc_cea_mode[index_1080p]);
+			find_result = ANY_VALID_MODE;
+		}
+
+		fb_var_to_videomode(&m, &hdmi->fbi->var);
+
+		console_lock();
+
+		fb_destroy_modelist(&hdmi->fbi->modelist);
+
+		/*Add all non-interlaced CEA mode to default modelist */
+		for (i = 0; i < ARRAY_SIZE(mxc_cea_mode); i++) {
+			mode = &mxc_cea_mode[i];
+			if (!(mode->vmode & FB_VMODE_INTERLACED) && (mode->xres != 0)) {
+				fb_add_videomode(mode, &hdmi->fbi->modelist);
+				if (fb_mode_is_equal(mode, &m))
+					mode_missing = 0;
+			}
+		}
+
+		/* Add our mode if not found */
+		if (mode_missing)
+			fb_add_videomode(&m, &hdmi->fbi->modelist);
+
+		console_unlock();
+	} else {
+		find_result = fb_find_mode(&hdmi->fbi->var,
+					   hdmi->fbi, hdmi->dft_mode_str,
+					   hdmi->fbi->monspecs.modedb, hdmi->fbi->monspecs.modedb_len,
+					   NULL, hdmi->default_bpp);
+		fb_var_to_videomode(&m, &hdmi->fbi->var);
+	}
+
+	if (find_result == NO_MATCH)
+		return -1;
+
+	/* Save default video mode */
+	dump_fb_videomode(&m);
+	memcpy(&hdmi->default_mode, &m, sizeof(struct fb_videomode));
+	hdmi->fbi->mode = &hdmi->default_mode;
+	dev_dbg(&hdmi->pdev->dev, "Default Mode: %ux%u@%u\n", m.xres, m.yres, m.refresh);
+
+	return 0;
+}
+
+static int mxc_hdmi_set_default_mode_at_init(struct mxc_hdmi *hdmi)
+{
+	int use_monspecs = 0;
+	return mxc_hdmi_set_default_mode(hdmi, use_monspecs);
+}
+
+static int mxc_hdmi_set_default_mode_from_edid(struct mxc_hdmi *hdmi)
+{
+	int use_monspecs = 1;
+	return mxc_hdmi_set_default_mode(hdmi, use_monspecs);
+}
+
 static void mxc_hdmi_edid_rebuild_modelist(struct mxc_hdmi *hdmi)
 {
 	int i;
@@ -1817,7 +1928,8 @@ static void mxc_hdmi_edid_rebuild_modelist(struct mxc_hdmi *hdmi)
 	fb_destroy_modelist(&hdmi->fbi->modelist);
 	fb_add_videomode(&vga_mode, &hdmi->fbi->modelist);
 
-	for (i = 0; i < hdmi->fbi->monspecs.modedb_len; i++) {
+	/* Add in reverse to preserve order. fb_add_videomode inserts at head */
+	for (i = hdmi->fbi->monspecs.modedb_len - 1; i >= 0; i--) {
 		/*
 		 * We might check here if mode is supported by HDMI.
 		 * We do not currently support interlaced modes.
@@ -1844,6 +1956,8 @@ static void mxc_hdmi_edid_rebuild_modelist(struct mxc_hdmi *hdmi)
 	fb_new_modelist(hdmi->fbi);
 
 	console_unlock();
+
+	mxc_hdmi_set_default_mode_from_edid(hdmi);
 }
 
 static void  mxc_hdmi_default_edid_cfg(struct mxc_hdmi *hdmi)
@@ -1894,7 +2008,6 @@ static void mxc_hdmi_set_mode_to_vga_dvi(struct mxc_hdmi *hdmi)
 static void mxc_hdmi_set_mode(struct mxc_hdmi *hdmi)
 {
 	const struct fb_videomode *mode;
-	struct fb_var_screeninfo var;
 
 	dev_dbg(&hdmi->pdev->dev, "%s\n", __func__);
 
@@ -1907,7 +2020,7 @@ static void mxc_hdmi_set_mode(struct mxc_hdmi *hdmi)
 
 	/* check video mode match result */
 	if (!hdmi_mode_is_equal(mode, &hdmi->default_mode)) {
-		mode = fb_find_best_mode(&var, &hdmi->fbi->modelist);
+		mode = fb_find_best_mode(&hdmi->fbi->var, &hdmi->fbi->modelist);
 		if (!mode) {
 			pr_err("%s: could not find best mode in modelist\n", __func__);
 			return;
@@ -2492,9 +2605,6 @@ static int mxc_hdmi_disp_init(struct mxc_dispdrv_handle *disp,
 			      struct mxc_dispdrv_setting *setting)
 {
 	int ret = 0;
-	u32 i;
-	const struct fb_videomode *mode;
-	struct fb_videomode m;
 	struct mxc_hdmi *hdmi = mxc_dispdrv_getdata(disp);
 	int irq = platform_get_irq(hdmi->pdev, 0);
 
@@ -2603,50 +2713,8 @@ static int mxc_hdmi_disp_init(struct mxc_dispdrv_handle *disp,
 
 	spin_lock_init(&hdmi->irq_lock);
 
-	/* Set the default mode and modelist when disp init. */
-	fb_find_mode(&hdmi->fbi->var, hdmi->fbi,
-		     hdmi->dft_mode_str, NULL, 0, NULL,
-		     hdmi->default_bpp);
-
-	console_lock();
-
-	fb_destroy_modelist(&hdmi->fbi->modelist);
-
-	/*Add all no interlaced CEA mode to default modelist */
-	for (i = 0; i < ARRAY_SIZE(mxc_cea_mode); i++) {
-		mode = &mxc_cea_mode[i];
-		if (!(mode->vmode & FB_VMODE_INTERLACED) && (mode->xres != 0))
-			fb_add_videomode(mode, &hdmi->fbi->modelist);
-	}
-
-	console_unlock();
-
-	/* Find a nearest mode in default modelist */
-	fb_var_to_videomode(&m, &hdmi->fbi->var);
-	dump_fb_videomode(&m);
-
-	/* Save default video mode */
-	memcpy(&hdmi->default_mode, &m, sizeof(struct fb_videomode));
-
-	mode = fb_find_nearest_mode(&m, &hdmi->fbi->modelist);
-	if (!mode) {
-		pr_err("%s: could not find mode in modelist\n", __func__);
+	if (mxc_hdmi_set_default_mode_at_init(hdmi) < 0)
 		return -1;
-	}
-
-	/* check video mode match result */
-	if (!hdmi_mode_is_equal(mode, &hdmi->default_mode)) {
-		mode = fb_find_best_mode(&hdmi->fbi->var, &hdmi->fbi->modelist);
-		if (!mode) {
-			pr_err("%s: could not find best mode in modelist\n", __func__);
-			return -1;
-		}
-	}
-
-	fb_videomode_to_var(&hdmi->fbi->var, mode);
-
-	/* update fbi mode */
-	hdmi->fbi->mode = (struct fb_videomode *)mode;
 
 	/* Default setting HDMI working in HDMI mode*/
 	hdmi->edid_cfg.hdmi_cap = true;
